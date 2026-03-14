@@ -12,31 +12,26 @@ const obtenerCategorias = async (req, res) => {
 };
 
 const crearCategoria = async (req, res) => {
+    console.log("--- INTENTO DE CREAR CATEGORÍA ---");
+    console.log("Datos recibidos:", req.body); // Esto saldrá en los Logs de Render
+
     try {
         const { nombre, empresa_id } = req.body;
         
-        // 1. Validación de seguridad básica
         if (!nombre || !empresa_id) {
-            return res.status(400).json({ mensaje: 'Faltan datos (nombre o empresa_id) para la categoría' });
+            console.log("Faltan datos:", { nombre, empresa_id });
+            return res.status(400).json({ mensaje: 'Faltan datos: nombre o empresa_id' });
         }
 
-        // 2. Insertar con el ID de empresa asegurado
         const [resultado] = await db.query(
             'INSERT INTO categorias (nombre, empresa_id) VALUES (?, ?)',
             [nombre.trim(), Number(empresa_id)]
         );
 
-        res.status(201).json({ 
-            mensaje: 'Categoría creada con éxito',
-            id: resultado.insertId, 
-            nombre: nombre 
-        });
+        res.status(201).json({ id: resultado.insertId, nombre: nombre });
     } catch (error) {
-        console.error('Error detallado en categorías:', error);
-        res.status(500).json({ 
-            mensaje: 'Error al crear la categoría', 
-            detalle: error.sqlMessage 
-        });
+        console.error('ERROR SQL DETALLADO:', error.sqlMessage);
+        res.status(500).json({ mensaje: 'Error SQL', detalle: error.sqlMessage });
     }
 };
 
