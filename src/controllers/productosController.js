@@ -11,29 +11,44 @@ const crearProducto = async (req, res) => {
             precio_venta, 
             stock_actual, 
             stock_minimo,
-            proveedor // 👇 NUEVO: Atrapamos el proveedor que envía React
+            proveedor
         } = req.body;
         
-        // Validación de campos obligatorios
+        // 1. Validación de campos críticos
         if (!empresa_id || !nombre || !precio_compra || !precio_venta) {
-            return res.status(400).json({ mensaje: 'Faltan datos obligatorios para crear el producto' });
+            return res.status(400).json({ mensaje: 'Faltan datos obligatorios (Empresa, Nombre o Precios)' });
         }
 
-        // 👇 NUEVO: Agregamos el campo proveedor y su signo de interrogación en el INSERT
+        // 2. Limpieza de datos (Evitamos enviar strings vacíos o nulls que MySQL rechace)
+        const catId = categoria_id || null; 
+        const codBarras = codigo_barras || '';
+        const prov = proveedor || '';
+        const sActual = parseFloat(stock_actual) || 0;
+        const sMin = parseFloat(stock_minimo) || 0;
+
+        // 3. Ejecución del INSERT
         const [resultado] = await db.query(
             `INSERT INTO productos 
             (empresa_id, categoria_id, codigo_barras, nombre, precio_compra, precio_venta, stock_actual, stock_minimo, proveedor) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [empresa_id, categoria_id, codigo_barras, nombre, precio_compra, precio_venta, stock_actual || 0, stock_minimo || 5, proveedor]
+            [empresa_id, catId, codBarras, nombre, precio_compra, precio_venta, sActual, sMin, prov]
         );
 
         res.status(201).json({
-            mensaje: 'Producto registrado en el inventario con éxito',
+            mensaje: 'Producto registrado con éxito',
             productoId: resultado.insertId
         });
+
     } catch (error) {
-        console.error('Error al crear producto:', error);
-        res.status(500).json({ mensaje: 'Hubo un error en el servidor' });
+        // 👇 ESTO ES CLAVE: Ahora el error se verá clarito en los Logs de Render
+        console.error('--- ERROR EN BASE DE DATOS ---');
+        console.error('Mensaje:', error.sqlMessage); 
+        console.error('Código:', error.code);
+        
+        res.status(500).json({ 
+            mensaje: 'Error en el servidor al guardar producto',
+            detalle: error.sqlMessage // Solo para debugear, luego puedes quitarlo
+        });
     }
 };
 
