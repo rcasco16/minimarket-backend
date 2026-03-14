@@ -58,4 +58,38 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { login };
+    const registrarEmpresa = async (req, res) => {
+    const connection = await db.getConnection(); // Usamos transacción para que se creen ambos o ninguno
+    try {
+        await connection.beginTransaction();
+        const { nombre_comercial, nombre_admin, email, password } = req.body;
+
+        // 1. Crear la empresa
+        const [resEmpresa] = await connection.query(
+            'INSERT INTO empresas (nombre_comercial) VALUES (?)',
+            [nombre_comercial]
+        );
+        const empresaId = resEmpresa.insertId;
+
+        // 2. Encriptar contraseña
+        const salt = await bcrypt.genSalt(10);
+        const hashedPwd = await bcrypt.hash(password, salt);
+
+        // 3. Crear el usuario administrador vinculado a esa empresa
+        await connection.query(
+            'INSERT INTO usuarios (nombre, email, password_hash, rol, empresa_id) VALUES (?, ?, ?, ?, ?)',
+            [nombre_admin, email, hashedPwd, 'admin', empresaId]
+        );
+
+        await connection.commit();
+        res.status(201).json({ mensaje: 'Cliente registrado exitosamente' });
+    } catch (error) {
+        await connection.rollback();
+        console.error(error);
+        res.status(500).json({ mensaje: 'Error al registrar el cliente' });
+    } finally {
+        connection.release();
+    }
+};
+
+module.exports = { login, registrarEmpresa };
