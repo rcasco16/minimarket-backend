@@ -59,36 +59,34 @@ const login = async (req, res) => {
 };
 
     const registrarEmpresa = async (req, res) => {
-    const connection = await db.getConnection(); // Usamos transacción para que se creen ambos o ninguno
     try {
-        await connection.beginTransaction();
         const { nombre_comercial, nombre_admin, email, password } = req.body;
 
-        // 1. Crear la empresa
-        const [resEmpresa] = await connection.query(
+        // 1. Crear la empresa primero
+        const [resEmpresa] = await db.query(
             'INSERT INTO empresas (nombre_comercial) VALUES (?)',
             [nombre_comercial]
         );
         const empresaId = resEmpresa.insertId;
 
-        // 2. Encriptar contraseña
+        // 2. Encriptar la contraseña del nuevo cliente
         const salt = await bcrypt.genSalt(10);
         const hashedPwd = await bcrypt.hash(password, salt);
 
-        // 3. Crear el usuario administrador vinculado a esa empresa
-        await connection.query(
+        // 3. Crear el usuario administrador vinculado a esa nueva empresa
+        await db.query(
             'INSERT INTO usuarios (nombre, email, password_hash, rol, empresa_id) VALUES (?, ?, ?, ?, ?)',
             [nombre_admin, email, hashedPwd, 'admin', empresaId]
         );
 
-        await connection.commit();
         res.status(201).json({ mensaje: 'Cliente registrado exitosamente' });
     } catch (error) {
-        await connection.rollback();
-        console.error(error);
-        res.status(500).json({ mensaje: 'Error al registrar el cliente' });
-    } finally {
-        connection.release();
+        console.error('Error detallado:', error);
+        // Si el error es porque el email ya existe
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ mensaje: 'Ese correo electrónico ya está registrado' });
+        }
+        res.status(500).json({ mensaje: 'Error interno en el servidor' });
     }
 };
 
