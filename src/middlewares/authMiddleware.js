@@ -17,10 +17,9 @@ const verificarToken = (req, res, next) => {
         const decodificado = jwt.verify(token, process.env.JWT_SECRET);
         
         // 4. Guardamos los datos de Doña Rosa (como su empresa_id) dentro de "req" 
-        // para que los controladores puedan usarlos más adelante
         req.usuario = decodificado; 
         
-        // 5. ¡Todo en orden! Le decimos a Node que continúe con lo que el usuario quería hacer
+        // 5. ¡Todo en orden! Le decimos a Node que continúe
         next();
     } catch (error) {
         return res.status(403).json({ mensaje: 'El token es inválido o ya expiró.' });
@@ -28,14 +27,14 @@ const verificarToken = (req, res, next) => {
 };
 
 const verificarRolAdmin = (req, res, next) => {
-    // Como verificarToken se ejecuta primero, ya tenemos los datos en req.usuario
-    if (!req.usuario || req.usuario.rol !== 'Administrador') {
+    // 👇 AQUÍ ESTÁ EL CAMBIO: Ahora buscamos 'admin' (como está en la base de datos)
+    if (!req.usuario || req.usuario.rol !== 'admin') {
         return res.status(403).json({ 
             mensaje: 'Acceso denegado. Solo los administradores pueden realizar esta acción.' 
         });
     }
     
-    // Si es Administrador, lo dejamos pasar
+    // Si es admin, lo dejamos pasar
     next();
 };
 

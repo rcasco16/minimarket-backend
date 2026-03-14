@@ -1,11 +1,12 @@
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt'); // 👈 AÑADIMOS LA LIBRERÍA DE SEGURIDAD
 
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // 1. Buscamos si el correo existe, y hacemos JOIN para traer el nombre de su empresa
+        // 1. Buscamos si el correo existe
         const [usuarios] = await db.query(
             `SELECT u.*, e.nombre_comercial 
              FROM usuarios u 
@@ -20,15 +21,14 @@ const login = async (req, res) => {
 
         const usuario = usuarios[0];
 
-        // 2. Comparamos la contraseña 
-        // (Nota: Como guardamos la de Doña Rosa en texto plano en el paso anterior, comparamos directo. 
-        // Más adelante implementaremos bcrypt para encriptarlas).
-        if (password !== usuario.password_hash) {
+        // 2. Comparamos la contraseña desencriptando con bcrypt 👈 (EL CAMBIO MÁGICO)
+        const passwordCorrecta = await bcrypt.compare(password, usuario.password_hash);
+        
+        if (!passwordCorrecta) {
             return res.status(401).json({ mensaje: 'Correo o contraseña incorrectos' });
         }
 
         // 3. ¡Todo correcto! Creamos el Token JWT
-        // Guardamos dentro del token los datos clave: quién es y a qué empresa pertenece
         const token = jwt.sign(
             { 
                 id: usuario.id, 
@@ -36,7 +36,7 @@ const login = async (req, res) => {
                 rol: usuario.rol 
             },
             process.env.JWT_SECRET,
-            { expiresIn: '8h' } // El token caduca en 8 horas (un turno de trabajo normal)
+            { expiresIn: '8h' } 
         );
 
         // 4. Se lo enviamos al cliente
@@ -48,7 +48,7 @@ const login = async (req, res) => {
                 nombre: usuario.nombre,
                 rol: usuario.rol,
                 empresa_id: usuario.empresa_id,
-                nombre_comercial: usuario.nombre_comercial // 👈 AQUÍ ENVIAMOS EL NOMBRE DEL LOCAL
+                nombre_comercial: usuario.nombre_comercial 
             }
         });
 
