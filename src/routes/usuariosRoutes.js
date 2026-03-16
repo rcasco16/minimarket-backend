@@ -6,5 +6,6 @@ const { verificarToken, verificarRolAdmin } = require('../middlewares/authMiddle
 // Solo los administradores pueden ver y crear personal
 router.get('/empresa/:empresa_id', verificarToken, verificarRolAdmin, obtenerUsuarios);
 router.post('/', verificarToken, verificarRolAdmin, crearUsuario);
+router.delete('/:id', verificarToken, usuariosController.eliminarUsuario);
 
 module.exports = router;
