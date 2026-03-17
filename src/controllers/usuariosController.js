@@ -31,6 +31,15 @@ const crearUsuario = async (req, res) => {
             return res.status(400).json({ mensaje: 'Este correo ya está registrado' });
         }
 
+        // Dentro de crearUsuario en el Backend
+        const [datosEmpresa] = await db.query('SELECT plan FROM empresas WHERE id = ?', [empresa_id]);
+
+        if (datosEmpresa[0].plan === 'basico') {
+            return res.status(403).json({
+                mensaje: 'Tu plan básico no permite registrar funcionarios. Sube al plan Emprendedor.'
+            });
+        }
+
         // 2. 👇 NUEVO: Encriptamos la contraseña antes de guardar
         const salt = await bcrypt.genSalt(10);
         const passwordEncriptada = await bcrypt.hash(password, salt);
@@ -54,7 +63,7 @@ const eliminarUsuario = async (req, res) => {
         const { id } = req.params;
         // Obtenemos empresa_id del token (req.usuario) para asegurar que un admin 
         // no borre usuarios de otra empresa por error en la URL
-        const empresa_id = req.usuario.empresa_id; 
+        const empresa_id = req.usuario.empresa_id;
 
         // Borramos el usuario siempre que pertenezca a la empresa y NO sea el admin principal (opcional)
         const [resultado] = await db.query(

@@ -11,7 +11,8 @@ const crearProducto = async (req, res) => {
             precio_venta, 
             stock_actual, 
             stock_minimo,
-            proveedor
+            proveedor,
+            unidad_medida // 👇 NUEVO: Recibimos la medida (kg, litro, unidad)
         } = req.body;
         
         // 1. Validación de campos críticos
@@ -23,15 +24,18 @@ const crearProducto = async (req, res) => {
         const catId = categoria_id || null; 
         const codBarras = codigo_barras || '';
         const prov = proveedor || '';
+        // 👇 CLAVE: parseFloat para que acepte decimales como 10.5
         const sActual = parseFloat(stock_actual) || 0;
         const sMin = parseFloat(stock_minimo) || 0;
+        // 👇 CLAVE: Si viene vacío, por defecto le ponemos 'unidad'
+        const uMedida = unidad_medida || 'unidad'; 
 
         // 3. Ejecución del INSERT
         const [resultado] = await db.query(
             `INSERT INTO productos 
-            (empresa_id, categoria_id, codigo_barras, nombre, precio_compra, precio_venta, stock_actual, stock_minimo, proveedor) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [empresa_id, catId, codBarras, nombre, precio_compra, precio_venta, sActual, sMin, prov]
+            (empresa_id, categoria_id, codigo_barras, nombre, precio_compra, precio_venta, stock_actual, stock_minimo, proveedor, unidad_medida) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, // <-- Agregamos un ? más
+            [empresa_id, catId, codBarras, nombre, precio_compra, precio_venta, sActual, sMin, prov, uMedida]
         );
 
         res.status(201).json({
@@ -77,16 +81,21 @@ const actualizarProducto = async (req, res) => {
     try {
         const { id } = req.params; // Sacamos el ID de la URL
         
-        // 👇 NUEVO: Atrapamos el proveedor del req.body
-        const { codigo_barras, nombre, precio_compra, precio_venta, stock_actual, categoria_id, proveedor } = req.body;
+        // 👇 NUEVO: Atrapamos unidad_medida y stock_minimo
+        const { codigo_barras, nombre, precio_compra, precio_venta, stock_actual, stock_minimo, categoria_id, proveedor, unidad_medida } = req.body;
         const empresa_id = req.usuario.empresa_id; // Del token de seguridad
 
-        // 👇 NUEVO: Agregamos proveedor = ? en el UPDATE
+        // 👇 CLAVE: Limpiamos los datos y permitimos decimales
+        const sActual = parseFloat(stock_actual) || 0;
+        const sMin = parseFloat(stock_minimo) || 0;
+        const uMedida = unidad_medida || 'unidad';
+
+        // 👇 NUEVO: Agregamos unidad_medida y stock_minimo al UPDATE
         const [resultado] = await db.query(
             `UPDATE productos 
-             SET codigo_barras = ?, nombre = ?, precio_compra = ?, precio_venta = ?, stock_actual = ?, categoria_id = ?, proveedor = ? 
+             SET codigo_barras = ?, nombre = ?, precio_compra = ?, precio_venta = ?, stock_actual = ?, stock_minimo = ?, categoria_id = ?, proveedor = ?, unidad_medida = ? 
              WHERE id = ? AND empresa_id = ?`,
-            [codigo_barras, nombre, precio_compra, precio_venta, stock_actual, categoria_id, proveedor, id, empresa_id]
+            [codigo_barras, nombre, precio_compra, precio_venta, sActual, sMin, categoria_id, proveedor, uMedida, id, empresa_id]
         );
 
         if (resultado.affectedRows === 0) {
